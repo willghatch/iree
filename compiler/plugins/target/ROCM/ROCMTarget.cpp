@@ -87,6 +87,7 @@ struct ROCMOptions {
 
   bool specializeDispatches = false;
   bool enableTensorUKernels = false;
+  bool debugSymbols = false;
 
   void bindOptions(OptionsBinder &binder) {
     using namespace llvm;
@@ -161,6 +162,9 @@ struct ROCMOptions {
     binder.opt<bool>("iree-hip-enable-tensor-ukernels", enableTensorUKernels,
                      cl::cat(category),
                      cl::desc("Enable MLIR-based ukernels."));
+    binder.opt<bool>(
+        "iree-rocm-debug-symbols", debugSymbols, cl::cat(category),
+        cl::desc("Generate and embed debug information (DWARF) for ROCM."));
   }
 
   LogicalResult verify(mlir::Builder &builder) const {
@@ -409,7 +413,7 @@ public:
 
   void buildTranslationPassPipeline(IREE::HAL::ExecutableTargetAttr targetAttr,
                                     OpPassManager &passManager) override {
-    buildLLVMGPUCodegenPassPipeline(passManager, true);
+    buildLLVMGPUCodegenPassPipeline(passManager, true, options.debugSymbols);
   }
 
   void buildLinkingPassPipeline(OpPassManager &passManager) override {
@@ -655,6 +659,7 @@ public:
       // CI or users may not be prepared for.
       llvmModule->addModuleFlag(llvm::Module::Error,
                                 "amdhsa_code_object_version", abiVersion);
+
       for (llvm::Function &f : llvmModule->functions())
         f.addFnAttr(llvm::Attribute::AlwaysInline);
 
